@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Траты</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0b0b1a">
+<style>
+  :root {
+    --bg: #0b0b1a;
+    --glass: rgba(255,255,255,0.06);
+    --glass-border: rgba(255,255,255,0.12);
+    --ink: #f5f4fb;
+    --ink-soft: #9d9ab3;
+    --pink: #ff3d81;
+    --violet: #8b5cf6;
+    --cyan: #22d3ee;
+    --lime: #c6ff3d;
+    --danger: #ff5a5a;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* --- Фоновые переливающиеся пятна --- */
+  .blob {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(70px);
+    opacity: 0.55;
+    z-index: 0;
+    pointer-events: none;
+    animation: float 14s ease-in-out infinite;
+  }
+  .blob-1 { width: 280px; height: 280px; background: var(--pink); top: -80px; left: -60px; animation-delay: 0s; }
+  .blob-2 { width: 320px; height: 320px; background: var(--violet); top: 200px; right: -100px; animation-delay: -4s; }
+  .blob-3 { width: 260px; height: 260px; background: var(--cyan); bottom: -60px; left: 30px; animation-delay: -8s; }
+
+  @keyframes float {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(20px, -30px) scale(1.08); }
+    66% { transform: translate(-15px, 20px) scale(0.95); }
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 460px;
+    margin: 0 auto;
+    padding: 20px 16px 100px;
+  }
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+  }
+
+  header h1 {
+    font-size: 1.2rem;
+    margin: 0;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+
+  .icon-btn {
+    background: var(--glass);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    color: var(--ink-soft);
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .period-pills {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+  .pill {
+    flex: 1;
+    background: var(--glass);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    color: var(--ink-soft);
+    padding: 9px 0;
+    border-radius: 12px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .pill.active {
+    background: linear-gradient(135deg, var(--pink), var(--violet));
+    color: white;
+    border-color: transparent;
+  }
+
+  .hero-card {
+    background: var(--glass);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 28px;
+    padding: 30px 20px 20px;
+    margin-bottom: 18px;
+    box-shadow: 0 20px 60px rgba(139, 92, 246, 0.15);
+  }
+
+  .donut-zone {
+    position: relative;
+    width: 220px;
+    height: 220px;
+    margin: 0 auto 18px;
+    filter: drop-shadow(0 0 24px rgba(255, 61, 129, 0.25));
+  }
+
+  .donut-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    pointer-events: none;
+  }
+
+  .donut-center .label {
+    font-size: 0.72rem;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+
+  .donut-center .amount {
+    font-size: 1.9rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #fff, #d9d6f5);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .donut-center .amount .unit {
+    font-size: 1rem;
+    color: var(--ink-soft);
+    font-weight: 600;
+    -webkit-text-fill-color: var(--ink-soft);
+  }
+
+  .limit-bar-bg {
+    height: 7px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 5px;
+    overflow: hidden;
+    margin-top: 6px;
+  }
+  .limit-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--lime), var(--cyan));
+    border-radius: 5px;
+    transition: width 0.3s ease;
+  }
+  .limit-bar-fill.over { background: linear-gradient(90deg, var(--danger), var(--pink)); }
+
+  .limit-text {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.76rem;
+    color: var(--ink-soft);
+  }
+
+  .set-limit-link {
+    background: none;
+    border: none;
+    color: var(--ink-soft);
+    font-size: 0.76rem;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
+    margin-top: 8px;
+  }
+
+  .legend-scroll {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    margin-top: 16px;
+  }
+  .legend-chip {
+    flex-shrink: 0;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 8px 12px;
+    font-size: 0.78rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    font-weight: 600;
+  }
+  .legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  .section-title {
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+    margin: 22px 0 10px;
+  }
+
+  .cat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+
+  .cat-btn {
+    background: var(--glass);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: 18px;
+    padding: 13px 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    color: var(--ink);
+    transition: transform 0.15s ease;
+  }
+  .cat-btn:active { transform: scale(0.94); }
+  .cat-btn .emoji-badge {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+  }
+  .cat-btn .name { font-size: 0.68rem; color: var(--ink-soft); text-align: center; line-height: 1.15; font-weight: 600; }
+
+  .tx-list { margin-top: 4px; }
+  .tx-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .tx-emoji {
+    width: 40px;
+    height: 40px;
+    border-radius: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+  .tx-info { flex: 1; min-width: 0; }
+  .tx-cat { font-size: 0.9rem; font-weight: 700; }
+  .tx-note { font-size: 0.76rem; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tx-right { text-align: right; flex-shrink: 0; }
+  .tx-amount { font-weight: 800; font-variant-numeric: tabular-nums; }
+  .tx-date { font-size: 0.7rem; color: var(--ink-soft); }
+  .tx-del {
+    background: none; border: none; color: var(--ink-soft);
+    font-size: 1rem; cursor: pointer; padding: 4px 2px;
+  }
+  .tx-del:hover { color: var(--danger); }
+
+  .empty-state {
+    color: var(--ink-soft);
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 26px 0;
+  }
+
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(5,5,15,0.6);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 30;
+  }
+  .modal-backdrop.open { display: flex; }
+
+  .modal-sheet {
+    background: #14131f;
+    width: 100%;
+    max-width: 460px;
+    border-radius: 24px 24px 0 0;
+    padding: 24px 20px 28px;
+    border: 1px solid var(--glass-border);
+    border-bottom: none;
+  }
+
+  .modal-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.05rem;
+    font-weight: 800;
+    margin-bottom: 18px;
+  }
+
+  .modal-title .emoji-badge {
+    width: 34px; height: 34px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.15rem;
+  }
+
+  .field { margin-bottom: 13px; }
+  .field label {
+    display: block;
+    font-size: 0.76rem;
+    color: var(--ink-soft);
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+  .field input {
+    width: 100%;
+    padding: 12px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+    background: rgba(255,255,255,0.05);
+    color: var(--ink);
+    font-size: 1rem;
+    font-family: inherit;
+  }
+  .field input:focus { outline: none; border-color: var(--violet); }
+
+  .amount-input {
+    font-size: 1.9rem !important;
+    font-weight: 800;
+    text-align: center;
+    padding: 16px 12px !important;
+  }
+
+  .modal-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+  }
+  .btn {
+    flex: 1;
+    padding: 14px 0;
+    border-radius: 14px;
+    border: none;
+    font-weight: 700;
+    font-size: 0.92rem;
+    cursor: pointer;
+  }
+  .btn-cancel { background: rgba(255,255,255,0.06); color: var(--ink-soft); }
+  .btn-save { background: linear-gradient(135deg, var(--pink), var(--violet)); color: white; }
+
+  .menu-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.4);
+    display: none;
+    z-index: 40;
+  }
+  .menu-backdrop.open { display: block; }
+  .menu-sheet {
+    position: absolute;
+    top: 64px; right: 16px;
+    background: #14131f;
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 6px;
+    min-width: 200px;
+  }
+  .menu-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    color: var(--ink);
+    padding: 11px 12px;
+    font-size: 0.88rem;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .menu-item:hover { background: rgba(255,255,255,0.06); }
+</style>
+</head>
+<body>
+
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+<div class="blob blob-3"></div>
+
+<div class="wrap">
+  <header>
+    <h1>Мои траты</h1>
+    <button class="icon-btn" onclick="toggleMenu()">⋯</button>
+  </header>
+
+  <div class="period-pills">
+    <button class="pill" data-period="week" onclick="setPeriod('week')">Неделя</button>
+    <button class="pill active" data-period="month" onclick="setPeriod('month')">Месяц</button>
+    <button class="pill" data-period="all" onclick="setPeriod('all')">Всё время</button>
+  </div>
+
+  <div class="hero-card">
+    <div class="donut-zone">
+      <canvas id="donut" width="220" height="220"></canvas>
+      <div class="donut-center">
+        <div class="label">Потрачено</div>
+        <div class="amount" id="totalAmount">0 <span class="unit">₼</span></div>
+      </div>
+    </div>
+
+    <div id="limitBlock" style="display:none">
+      <div class="limit-text">
+        <span id="limitLeftText"></span>
+        <span id="limitValueText"></span>
+      </div>
+      <div class="limit-bar-bg"><div class="limit-bar-fill" id="limitBarFill"></div></div>
+    </div>
+    <button class="set-limit-link" onclick="openLimitModal()" id="limitLink">Задать лимит на месяц</button>
+
+    <div class="legend-scroll" id="legendScroll"></div>
+  </div>
+
+  <div class="section-title">Добавить трату</div>
+  <div class="cat-grid" id="catGrid"></div>
+
+  <div class="section-title">История</div>
+  <div class="tx-list" id="txList"></div>
+</div>
+
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal-sheet">
+    <div class="modal-title">
+      <span class="emoji-badge" id="modalEmojiBadge">🍔</span>
+      <span id="modalCatName">Еда</span>
+    </div>
+    <div class="field">
+      <label>Сумма, ₼</label>
+      <input type="number" id="modalAmount" class="amount-input" placeholder="0" inputmode="decimal">
+    </div>
+    <div class="field">
+      <label>Дата</label>
+      <input type="date" id="modalDate">
+    </div>
+    <div class="field">
+      <label>Комментарий (необязательно)</label>
+      <input type="text" id="modalNote" placeholder="например: у Ахмета">
+    </div>
+    <div class="modal-buttons">
+      <button class="btn btn-cancel" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-save" onclick="saveModalTransaction()">Добавить</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="limitModalBackdrop">
+  <div class="modal-sheet">
+    <div class="modal-title"><span>🎯</span><span>Лимит на месяц</span></div>
+    <div class="field">
+      <label>Сколько планируешь тратить в месяц, ₼</label>
+      <input type="number" id="limitInput" class="amount-input" placeholder="0" inputmode="decimal">
+    </div>
+    <div class="modal-buttons">
+      <button class="btn btn-cancel" onclick="closeLimitModal()">Отмена</button>
+      <button class="btn btn-save" onclick="saveLimit()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<div class="menu-backdrop" id="menuBackdrop" onclick="closeMenuIfBackdrop(event)">
+  <div class="menu-sheet">
+    <button class="menu-item" onclick="exportData()">⬇️ Сохранить в файл</button>
+    <button class="menu-item" onclick="document.getElementById('importFile').click()">⬆️ Загрузить из файла</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+  </div>
+</div>
+
+<script>
+  let transactions = []; // { amount, date, category, note }
+  let monthlyLimit = null;
+  let currentPeriod = 'month';
+  let selectedCategory = null;
+
+  const CATEGORIES = [
+    { name: 'Еда',        emoji: '🍔', color: '#ff3d81' },
+    { name: 'Транспорт',  emoji: '🚕', color: '#22d3ee' },
+    { name: 'Развлечения',emoji: '🎮', color: '#8b5cf6' },
+    { name: 'Одежда',     emoji: '👕', color: '#ff9f43' },
+    { name: 'Подписки',   emoji: '📱', color: '#2ecc9a' },
+    { name: 'Красота',    emoji: '💇', color: '#ff5ac8' },
+    { name: 'Учёба',      emoji: '🎓', color: '#ffe15a' },
+    { name: 'Подарки',    emoji: '🎁', color: '#c6ff3d' },
+  ];
+
+  function catInfo(name) {
+    return CATEGORIES.find(c => c.name === name) || { name, emoji: '💳', color: '#9d9ab3' };
+  }
+
+  function renderCatGrid() {
+    const grid = document.getElementById('catGrid');
+    grid.innerHTML = CATEGORIES.map(c => `
+      <button class="cat-btn" onclick="openModal('${c.name}')">
+        <span class="emoji-badge" style="background:${c.color}22">${c.emoji}</span>
+        <span class="name">${c.name}</span>
+      </button>
+    `).join('');
+  }
+
+  function setPeriod(period) {
+    currentPeriod = period;
+    document.querySelectorAll('.pill').forEach(p => {
+      p.classList.toggle('active', p.dataset.period === period);
+    });
+    renderAll();
+  }
+
+  function isInPeriod(dateStr) {
+    if (currentPeriod === 'all') return true;
+    const d = new Date(dateStr);
+    const now = new Date();
+    if (currentPeriod === 'month') {
+      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    }
+    if (currentPeriod === 'week') {
+      const weekAgo = new Date();
+      weekAgo.setDate(now.getDate() - 7);
+      return d >= weekAgo && d <= now;
+    }
+    return true;
+  }
+
+  function filteredTransactions() {
+    return transactions.filter(t => isInPeriod(t.date));
+  }
+
+  function openModal(categoryName) {
+    selectedCategory = categoryName;
+    const info = catInfo(categoryName);
+    const badge = document.getElementById('modalEmojiBadge');
+    badge.textContent = info.emoji;
+    badge.style.background = info.color + '33';
+    document.getElementById('modalCatName').textContent = info.name;
+    document.getElementById('modalAmount').value = '';
+    document.getElementById('modalNote').value = '';
+    document.getElementById('modalDate').valueAsDate = new Date();
+    document.getElementById('modalBackdrop').classList.add('open');
+    setTimeout(() => document.getElementById('modalAmount').focus(), 50);
+  }
+
+  function closeModal() {
+    document.getElementById('modalBackdrop').classList.remove('open');
+  }
+
+  function saveModalTransaction() {
+    const amount = parseFloat(document.getElementById('modalAmount').value);
+    const date = document.getElementById('modalDate').value;
+    const note = document.getElementById('modalNote').value.trim();
+
+    if (isNaN(amount) || amount <= 0) {
+      alert('Введи сумму больше нуля');
+      return;
+    }
+    if (!date) {
+      alert('Укажи дату');
+      return;
+    }
+
+    transactions.push({ amount, date, category: selectedCategory, note });
+    transactions.sort((a, b) => b.date.localeCompare(a.date));
+    closeModal();
+    renderAll();
+  }
+
+  function deleteTransaction(index) {
+    transactions.splice(index, 1);
+    renderAll();
+  }
+
+  function openLimitModal() {
+    document.getElementById('limitInput').value = monthlyLimit || '';
+    document.getElementById('limitModalBackdrop').classList.add('open');
+  }
+  function closeLimitModal() {
+    document.getElementById('limitModalBackdrop').classList.remove('open');
+  }
+  function saveLimit() {
+    const val = parseFloat(document.getElementById('limitInput').value);
+    monthlyLimit = (!isNaN(val) && val > 0) ? val : null;
+    closeLimitModal();
+    renderAll();
+  }
+
+  function toggleMenu() {
+    document.getElementById('menuBackdrop').classList.add('open');
+  }
+  function closeMenuIfBackdrop(e) {
+    if (e.target.id === 'menuBackdrop') e.currentTarget.classList.remove('open');
+  }
+
+  function exportData() {
+    const payload = { transactions, monthlyLimit };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'moi-traty-' + new Date().toISOString().slice(0, 10) + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    document.getElementById('menuBackdrop').classList.remove('open');
+  }
+
+  function importData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const loaded = JSON.parse(e.target.result);
+        if (Array.isArray(loaded)) {
+          transactions = loaded;
+        } else if (loaded && Array.isArray(loaded.transactions)) {
+          transactions = loaded.transactions;
+          monthlyLimit = loaded.monthlyLimit || null;
+        } else {
+          throw new Error('bad format');
+        }
+        renderAll();
+        alert('Загружено записей: ' + transactions.length);
+      } catch (err) {
+        alert('Не получилось прочитать файл — убедись, что он сохранён этим же приложением.');
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+    document.getElementById('menuBackdrop').classList.remove('open');
+  }
+
+  function renderDonut() {
+    const canvas = document.getElementById('donut');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 220, 220);
+
+    const list = filteredTransactions();
+    const total = list.reduce((s, t) => s + t.amount, 0);
+
+    document.getElementById('totalAmount').innerHTML =
+      Math.round(total).toLocaleString('ru-RU') + ' <span class="unit">₼</span>';
+
+    const cx = 110, cy = 110, rOuter = 100, rInner = 72;
+
+    if (list.length === 0) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, (rOuter + rInner) / 2, 0, Math.PI * 2);
+      ctx.lineWidth = rOuter - rInner;
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      ctx.stroke();
+    } else {
+      const totals = {};
+      list.forEach(t => { totals[t.category] = (totals[t.category] || 0) + t.amount; });
+      const entries = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+
+      let startAngle = -Math.PI / 2;
+      const gap = 0.03;
+      entries.forEach(([category, sum]) => {
+        const info = catInfo(category);
+        const slice = (sum / total) * (Math.PI * 2);
+        ctx.beginPath();
+        ctx.arc(cx, cy, (rOuter + rInner) / 2, startAngle + gap / 2, startAngle + slice - gap / 2);
+        ctx.lineWidth = rOuter - rInner;
+        ctx.strokeStyle = info.color;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+        startAngle += slice;
+      });
+
+      const legendScroll = document.getElementById('legendScroll');
+      legendScroll.innerHTML = entries.map(([category, sum]) => {
+        const info = catInfo(category);
+        const pct = Math.round((sum / total) * 100);
+        return `<div class="legend-chip">
+          <span class="legend-dot" style="background:${info.color}"></span>
+          <span>${info.emoji} ${pct}%</span>
+        </div>`;
+      }).join('');
+    }
+
+    const limitBlock = document.getElementById('limitBlock');
+    const limitLink = document.getElementById('limitLink');
+    if (monthlyLimit && currentPeriod === 'month') {
+      limitBlock.style.display = 'block';
+      limitLink.textContent = 'Изменить лимит';
+      const pct = Math.min(100, (total / monthlyLimit) * 100);
+      const fill = document.getElementById('limitBarFill');
+      fill.style.width = pct + '%';
+      fill.classList.toggle('over', total > monthlyLimit);
+      document.getElementById('limitLeftText').textContent =
+        total > monthlyLimit ? 'Лимит превышен' : 'Осталось ' + Math.round(monthlyLimit - total).toLocaleString('ru-RU') + ' ₼';
+      document.getElementById('limitValueText').textContent = 'из ' + Math.round(monthlyLimit).toLocaleString('ru-RU') + ' ₼';
+    } else {
+      limitBlock.style.display = 'none';
+      limitLink.textContent = 'Задать лимит на месяц';
+    }
+  }
+
+  function renderList() {
+    const wrap = document.getElementById('txList');
+    const list = filteredTransactions();
+
+    if (list.length === 0) {
+      wrap.innerHTML = '<div class="empty-state">Пока пусто — нажми на категорию выше, чтобы добавить первую трату.</div>';
+      return;
+    }
+
+    wrap.innerHTML = list.map(t => {
+      const realIndex = transactions.indexOf(t);
+      const info = catInfo(t.category);
+      const dateShort = new Date(t.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+      return `<div class="tx-row">
+        <div class="tx-emoji" style="background:${info.color}22">${info.emoji}</div>
+        <div class="tx-info">
+          <div class="tx-cat">${info.name}</div>
+          <div class="tx-note">${t.note || ''}</div>
+        </div>
+        <div class="tx-right">
+          <div class="tx-amount">${Math.round(t.amount).toLocaleString('ru-RU')} ₼</div>
+          <div class="tx-date">${dateShort}</div>
+        </div>
+        <button class="tx-del" onclick="deleteTransaction(${realIndex})">✕</button>
+      </div>`;
+    }).join('');
+  }
+
+  function renderAll() {
+    renderDonut();
+    renderList();
+  }
+
+  renderCatGrid();
+  renderAll();
+</script>
+
+</body>
+</html>
