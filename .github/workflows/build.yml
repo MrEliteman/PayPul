@@ -15,7 +15,7 @@ jobs:
           channel: 'stable'
       - run: flutter create --platforms=android .
       - name: Set app name
-        run: sed -i 's/android:label="[^"]*"/android:label="Pay_Pul"/' android/app/src/main/AndroidManifest.xml
+        run: sed -i 's/android:label="[^"]*"/android:label="paypul"/' android/app/src/main/AndroidManifest.xml
       - run: flutter pub get
       - run: dart run flutter_launcher_icons
       - run: flutter build apk --release --no-tree-shake-icons
