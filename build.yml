@@ -1,0 +1,78 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - run: flutter create --platforms=android --project-name moi_traty .
+      - name: Set app name
+        run: sed -i 's/android:label="[^"]*"/android:label="Мои Траты"/' android/app/src/main/AndroidManifest.xml
+      - name: Add notification permissions
+        run: |
+          python3 - <<'EOF'
+          import re
+          path = 'android/app/src/main/AndroidManifest.xml'
+          with open(path, encoding='utf-8') as f:
+              content = f.read()
+          perms = (
+              '    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n'
+              '    <uses-permission android:name="android.permission.VIBRATE"/>\n'
+          )
+          content = re.sub(r'(<manifest[^>]*>)', r'\1\n' + perms, content, count=1)
+          with open(path, 'w', encoding='utf-8') as f:
+              f.write(content)
+          EOF
+      - name: Enable core library desugaring
+        run: |
+          python3 - <<'EOF'
+          import re, os
+
+          kts_path = 'android/app/build.gradle.kts'
+          groovy_path = 'android/app/build.gradle'
+          is_kts = os.path.exists(kts_path)
+          path = kts_path if is_kts else groovy_path
+
+          with open(path, encoding='utf-8') as f:
+              content = f.read()
+
+          if is_kts:
+              flag = 'isCoreLibraryDesugaringEnabled = true'
+              dep = '    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n'
+          else:
+              flag = 'coreLibraryDesugaringEnabled true'
+              dep = "    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'\n"
+
+          if 'compileOptions' in content:
+              content = re.sub(r'(compileOptions\s*\{)', r'\1\n        ' + flag, content, count=1)
+          else:
+              content = re.sub(r'(android\s*\{)', r'\1\n    compileOptions {\n        ' + flag + '\n    }\n', content, count=1)
+
+          if re.search(r'\ndependencies\s*\{', content):
+              content = re.sub(r'(\ndependencies\s*\{)', r'\1\n' + dep, content, count=1)
+          else:
+              content += '\n\ndependencies {\n' + dep + '}\n'
+
+          with open(path, 'w', encoding='utf-8') as f:
+              f.write(content)
+          print('patched', path)
+          EOF
+      - name: Add custom notification sound
+        run: |
+          mkdir -p android/app/src/main/res/raw
+          cp native_sound/limit_alert.wav android/app/src/main/res/raw/limit_alert.wav
+      - run: flutter pub get
+      - run: dart run flutter_launcher_icons
+      - run: flutter build apk --release --no-tree-shake-icons
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: build/app/outputs/flutter-apk/app-release.apk
