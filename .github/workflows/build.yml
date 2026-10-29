@@ -17,7 +17,9 @@ jobs:
           channel: stable
           cache: true
       - name: Generate Android scaffold
-        run: flutter create --platforms=android --org com.wheremymoney --project-name where_is_my_money .
+        run: |
+          flutter create --platforms=android --org com.wheremymoney --project-name where_is_my_money /tmp/scaffold
+          cp -r /tmp/scaffold/android ./android
       - name: Set app label
         run: sed -i 's/android:label="[^"]*"/android:label="Where Is My Money"/' android/app/src/main/AndroidManifest.xml
       - run: flutter pub get
